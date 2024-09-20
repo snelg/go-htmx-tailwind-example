@@ -4,15 +4,12 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
+	"strings"
 	"time"
-
-	"github.com/jritsema/gotoolbox"
-	"github.com/jritsema/gotoolbox/web"
 )
 
 var (
@@ -23,36 +20,32 @@ var (
 	css embed.FS
 
 	//parsed templates
-	html *template.Template
+	templates *template.Template
 )
 
 func main() {
 
-	//exit process immediately upon sigterm
-	handleSigTerms()
-
 	//parse templates
 	var err error
-	html, err = web.TemplateParseFSRecursive(templateFS, ".html", true, nil)
+	templates, err = TemplateParseFSRecursive(templateFS, ".html")
 	if err != nil {
 		panic(err)
 	}
 
 	//add routes
 	router := http.NewServeMux()
-	router.Handle("/css/output.css", http.FileServer(http.FS(css)))
+	router.Handle("GET /css/output.css", http.FileServer(http.FS(css)))
 
-	router.Handle("/company/add", web.Action(companyAdd))
-	router.Handle("/company/add/", web.Action(companyAdd))
+	router.Handle("GET /{$}", HtmlHandler(index))
 
-	router.Handle("/company/edit", web.Action(companyEdit))
-	router.Handle("/company/edit/", web.Action(companyEdit))
+	router.Handle("GET /companies", HtmlHandler(companies))
 
-	router.Handle("/company", web.Action(companies))
-	router.Handle("/company/", web.Action(companies))
-
-	router.Handle("/", web.Action(index))
-	router.Handle("/index.html", web.Action(index))
+	router.Handle("GET /company/{id}", HtmlHandler(companyGet))
+	router.Handle("PUT /company/{id}", HtmlHandler(companyPut))
+	router.Handle("POST /company", HtmlHandler(companyPost))
+	router.Handle("DELETE /company/{id}", HtmlHandler(companyDelete))
+	router.Handle("GET /company/{id}/edit", HtmlHandler(companyEdit))
+	router.Handle("GET /company/add", HtmlHandler(companyAdd))
 
 	//logging/tracing
 	nextRequestID := func() string {
@@ -61,7 +54,10 @@ func main() {
 	logger := log.New(os.Stdout, "http: ", log.LstdFlags)
 	middleware := tracing(nextRequestID)(logging(logger)(router))
 
-	port := gotoolbox.GetEnvWithDefault("PORT", "8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 	logger.Println("listening on http://localhost:" + port)
 	if err := http.ListenAndServe(":"+port, middleware); err != nil {
 		logger.Println("http.ListenAndServe():", err)
@@ -69,12 +65,29 @@ func main() {
 	}
 }
 
-func handleSigTerms() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		fmt.Println("received SIGTERM, exiting")
-		os.Exit(1)
-	}()
+func TemplateParseFSRecursive(
+	templates fs.FS,
+	ext string) (*template.Template, error) {
+
+	root := template.New("")
+	err := fs.WalkDir(templates, "templates", func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() && strings.HasSuffix(path, ext) {
+			if err != nil {
+				return err
+			}
+			b, err := fs.ReadFile(templates, path)
+			if err != nil {
+				return err
+			}
+			parts := strings.Split(path, "/")
+			name := strings.Join(parts[1:], "/")
+			t := root.New(name)
+			_, err = t.Parse(string(b))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return root, err
 }

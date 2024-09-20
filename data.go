@@ -2,7 +2,8 @@ package main
 
 import "strconv"
 
-var data []Company
+var data map[string]Company
+var incr int
 
 type Company struct {
 	ID      string
@@ -12,77 +13,43 @@ type Company struct {
 }
 
 func init() {
-	data = []Company{
-		{
+	data = map[string]Company{
+		"1": {
 			ID:      "1",
 			Company: "Amazon",
 			Contact: "Jeff Bezos",
 			Country: "United States",
 		},
-		{
+		"2": {
 			ID:      "2",
 			Company: "Apple",
 			Contact: "Tim Cook",
 			Country: "United States",
 		},
-		{
+		"3": {
 			ID:      "3",
 			Company: "Microsoft",
 			Contact: "Satya Nadella",
 			Country: "United States",
 		},
 	}
+	incr = len(data)
 }
 
 func getCompanyByID(id string) Company {
-	var result Company
-	for _, i := range data {
-		if i.ID == id {
-			result = i
-			break
-		}
-	}
-	return result
+	return data[id]
 }
 
-func updateCompany(company Company) {
-	result := []Company{}
-	for _, i := range data {
-		if i.ID == company.ID {
-			i.Company = company.Company
-			i.Contact = company.Contact
-			i.Country = company.Country
-		}
-		result = append(result, i)
-	}
-	data = result
+func updateCompany(id string, company Company) {
+	data[id] = company
 }
 
 func addCompany(company Company) {
-	max := 0
-	for _, i := range data {
-		n, _ := strconv.Atoi(i.ID)
-		if n > max {
-			max = n
-		}
-	}
-	max++
-	id := strconv.Itoa(max)
-
-	data = append(data, Company{
-		ID:      id,
-		Company: company.Company,
-		Contact: company.Contact,
-		Country: company.Country,
-	})
+	incr++
+	company.ID = strconv.Itoa(incr)
+	data[company.ID] = company
 }
 
 func deleteCompany(id string) {
-	result := []Company{}
-	for _, i := range data {
-		if i.ID != id {
-			result = append(result, i)
-		}
-	}
-	data = result
+	delete(data, id)
 }
