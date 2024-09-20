@@ -38,7 +38,7 @@ func main() {
 
 	router.Handle("GET /{$}", HtmlHandler(index))
 
-	router.Handle("GET /companies", HtmlHandler(companies))
+	router.Handle("GET /companies", HtmlHandler(companiesGet))
 
 	router.Handle("GET /company/{id}", HtmlHandler(companyGet))
 	router.Handle("PUT /company/{id}", HtmlHandler(companyPut))

@@ -2,8 +2,14 @@ package main
 
 import "strconv"
 
-var data map[string]Company
-var incr int
+type Companies map[string]Company
+
+type CompanyDB struct {
+	companies Companies
+	incr      int
+}
+
+var companyDB CompanyDB
 
 type Company struct {
 	ID      string
@@ -13,7 +19,7 @@ type Company struct {
 }
 
 func init() {
-	data = map[string]Company{
+	companies := Companies{
 		"1": {
 			ID:      "1",
 			Company: "Amazon",
@@ -33,23 +39,31 @@ func init() {
 			Country: "United States",
 		},
 	}
-	incr = len(data)
+
+	companyDB = CompanyDB{
+		companies: companies,
+		incr:      len(companies),
+	}
 }
 
-func getCompanyByID(id string) Company {
-	return data[id]
+func (c *CompanyDB) getAll() Companies {
+	return c.companies
 }
 
-func updateCompany(id string, company Company) {
-	data[id] = company
+func (c *CompanyDB) getById(id string) Company {
+	return c.companies[id]
 }
 
-func addCompany(company Company) {
-	incr++
-	company.ID = strconv.Itoa(incr)
-	data[company.ID] = company
+func (c *CompanyDB) update(id string, company Company) {
+	c.companies[id] = company
 }
 
-func deleteCompany(id string) {
-	delete(data, id)
+func (c *CompanyDB) add(company Company) {
+	c.incr++
+	company.ID = strconv.Itoa(c.incr)
+	c.companies[company.ID] = company
+}
+
+func (c *CompanyDB) delete(id string) {
+	delete(c.companies, id)
 }
